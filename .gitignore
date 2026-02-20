@@ -30,3 +30,13 @@ next-env.d.ts
 .DS_Store
 dist/
 coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+.pytest_cache/

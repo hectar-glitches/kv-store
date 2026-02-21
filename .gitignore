@@ -1,6 +1,9 @@
 # dependencies
 /node_modules
 
+# kv-store data directory
+/data/
+
 # next.js
 /.next/
 /out/

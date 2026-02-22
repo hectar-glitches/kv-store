@@ -3,6 +3,7 @@ import { LRUCache, type CacheStats } from "./lru-cache"
 import { ConsistentHashRing, type ShardingStats } from "./consistent-hash"
 import { ReplicationManager, type ReplicationStats, type ReplicationOperation } from "./replication"
 import { FaultToleranceManager, type FaultToleranceStats, type CircuitBreakerState } from "./fault-tolerance"
+import { initStorageLayout, appendWAL } from "./storage"
 
 export interface KVPair {
   key: string
@@ -54,6 +55,7 @@ class DistributedKVStore {
     this.faultToleranceManager = new FaultToleranceManager()
 
     this.initializeDefaultNodes()
+    initStorageLayout()
 
     this.stats = {
       totalKeys: 0,
@@ -177,6 +179,11 @@ class DistributedKVStore {
       this.stats.operations++
       this.updateStats()
 
+      try {
+        appendWAL({ op: "SET", key, value, ttl, ts: now })
+      } catch (walErr) {
+        console.error(`[KV-Store] WAL write failed for SET ${key}:`, walErr)
+      }
       console.log(`[KV-Store] SET ${key} = ${value} (node: ${nodeId})`)
       return success
     } catch (error) {
@@ -265,6 +272,7 @@ class DistributedKVStore {
 
   async delete(key: string): Promise<boolean> {
     try {
+      const now = Date.now()
       const nodeId = this.shardingEnabled ? this.hashRing.getNodeForKey(key) : "local"
 
       const deleteOperation = async () => {
@@ -314,6 +322,13 @@ class DistributedKVStore {
       this.stats.operations++
       this.updateStats()
 
+      if (existed) {
+        try {
+          appendWAL({ op: "DELETE", key, ts: now })
+        } catch (walErr) {
+          console.error(`[KV-Store] WAL write failed for DELETE ${key}:`, walErr)
+        }
+      }
       console.log(`[KV-Store] DELETE ${key} = ${existed ? "OK" : "Key not found"} (node: ${nodeId})`)
       return existed
     } catch (error) {
@@ -491,6 +506,11 @@ class DistributedKVStore {
 
     this.stats.operations++
     this.updateStats()
+    try {
+      appendWAL({ op: "CLEAR", ts: Date.now() })
+    } catch (walErr) {
+      console.error("[KV-Store] WAL write failed for CLEAR:", walErr)
+    }
     console.log("[KV-Store] CLEAR - All data cleared")
   }
 

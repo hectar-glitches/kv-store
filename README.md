@@ -25,9 +25,11 @@ kv-store REST API and a demo Retrieval-Augmented Generation (RAG) pipeline.
 python/
 ├── kvstore_client/       # importable Python package
 │   ├── __init__.py
-│   └── client.py         # KVStoreClient (upsert, query, …)
+│   ├── client.py         # KVStoreClient (upsert, query, …)
+│   └── recruitment.py    # RecruitmentClient (store_candidate, find_candidates)
 ├── examples/
-│   └── rag_demo.py       # end-to-end RAG demo
+│   ├── rag_demo.py       # end-to-end RAG demo
+│   └── recruiter_demo.py # candidate search demo for recruiters
 ├── requirements.txt
 └── setup.py
 ```
@@ -116,6 +118,62 @@ Example output:
 Consistent hashing is a technique …
 ──────────────────────────────────────────────────────────────────────
 ```
+
+---
+
+## Recruiter use-case: candidate search
+
+`RecruitmentClient` extends `KVStoreClient` with two convenience methods that
+make it straightforward to build a semantic candidate-search pipeline for
+recruiters.
+
+### Storing and searching candidate profiles
+
+```python
+from sentence_transformers import SentenceTransformer
+from kvstore_client import RecruitmentClient
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+client = RecruitmentClient(base_url="http://localhost:3000")
+
+# 1. Store a candidate profile
+client.store_candidate(
+    candidate_id="candidate:alice-smith",
+    name="Alice Smith",
+    headline="Senior ML Engineer",
+    experience_summary="8 years building PyTorch models and LLM applications.",
+    skills=["Python", "PyTorch", "LLMs", "RAG"],
+    embedder=model,
+)
+
+# 2. Find best matches for a job description
+results = client.find_candidates(
+    job_description="Looking for an ML engineer with LLM and RAG experience",
+    top_k=5,
+    embedder=model,
+)
+for r in results:
+    print(r["score"], r["metadata"]["name"], r["metadata"]["skills"])
+
+# 3. Filter by required skills
+results = client.find_candidates(
+    job_description="Senior AI engineer for our RAG platform",
+    top_k=3,
+    required_skills=["Python", "RAG", "LLMs"],
+    embedder=model,
+)
+```
+
+### Running the recruiter demo
+
+```bash
+python python/examples/recruiter_demo.py
+```
+
+The demo will:
+1. Embed and store a pool of 5 sample candidate profiles.
+2. Run a semantic search for a sample job description.
+3. Re-run the search with a required-skills filter.
 
 ---
 

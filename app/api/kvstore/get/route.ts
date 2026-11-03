@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const kvStore = getKVStore()
-    const value = kvStore.get(key)
+    const value = await kvStore.get(key)
 
     return NextResponse.json({
       success: true,

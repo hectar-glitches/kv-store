@@ -10,7 +10,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const kvStore = getKVStore()
-    const success = kvStore.delete(key)
+    const success = await kvStore.delete(key)
 
     return NextResponse.json({
       success,

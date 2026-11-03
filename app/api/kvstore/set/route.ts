@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const kvStore = getKVStore()
-    const success = kvStore.set(key, value, ttl)
+    const success = await kvStore.set(key, value, ttl)
 
     return NextResponse.json({
       success,
